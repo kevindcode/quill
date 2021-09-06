@@ -56,18 +56,36 @@ class BaseTheme extends Theme {
   constructor(quill, options) {
     super(quill, options);
     const listener = e => {
-      if (!document.body.contains(quill.root)) {
+      // console.log('kevTest: clickity');
+      // console.log('kevTest: quill.root =>', quill.root);
+      // kevTest this is where the click event callback is defined
+      // if (!document.body.contains(quill.root)) {
+      if (
+        !document
+          .querySelector('yld-web-sandbox')
+          .shadowRoot.contains(quill.root)
+      ) {
+        console.log(
+          'kevTest: body does not contain the quill root, so we will remove the event listener',
+        );
         document.body.removeEventListener('click', listener);
         return;
       }
       if (
+        // if the tooltip exists and
         this.tooltip != null &&
+        // the tooltip root does not contain the selected element (🤔)
         !this.tooltip.root.contains(e.target) &&
+        // and the current active element in the document is not the tooltip textbox
         document.activeElement !== this.tooltip.textbox &&
+        // and the quill editor is not focused
         !this.quill.hasFocus()
       ) {
+        // then we hide the tooltip
         this.tooltip.hide();
       }
+      // if there are pickers (which are just dropdown components in the toolbar)
+      // we should close them on click events
       if (this.pickers != null) {
         this.pickers.forEach(picker => {
           if (!picker.container.contains(e.target)) {
@@ -76,6 +94,9 @@ class BaseTheme extends Theme {
         });
       }
     };
+    // document.body.addEventListener('click', () => {
+    //   console.log('kevTest: raw document.body click');
+    // });
     quill.emitter.listenDOM('click', document.body, listener);
   }
 
@@ -211,6 +232,7 @@ class BaseTooltip extends Tooltip {
   }
 
   edit(mode = 'link', preview = null) {
+    console.log('kevTest: edit');
     this.root.classList.remove('ql-hidden');
     this.root.classList.add('ql-editing');
     if (preview != null) {

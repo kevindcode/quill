@@ -95,6 +95,7 @@ class Quill {
     this.theme.init();
     this.emitter.on(Emitter.events.EDITOR_CHANGE, type => {
       if (type === Emitter.events.TEXT_CHANGE) {
+        // only set the 'ql-blank' class if the editor is empty
         this.root.classList.toggle('ql-blank', this.editor.isBlank());
       }
     });
@@ -535,6 +536,7 @@ function expandConfig(container, userConfig) {
 // Handle selection preservation and TEXT_CHANGE emission
 // common to modification APIs
 function modify(modifier, source, index, shift) {
+  // console.log('kevTest: modify function called!');
   if (
     !this.isEnabled() &&
     source === Emitter.sources.USER &&

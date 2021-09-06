@@ -7,9 +7,16 @@ const EVENTS = ['selectionchange', 'mousedown', 'mouseup', 'click'];
 
 EVENTS.forEach(eventName => {
   document.addEventListener(eventName, (...args) => {
-    Array.from(document.querySelectorAll('.ql-container')).forEach(node => {
+    // TODO: kevTest
+    // update to be generic solution!
+    Array.from(
+      document
+        .querySelector('yld-web-sandbox')
+        .shadowRoot.querySelectorAll('.ql-container'),
+    ).forEach(node => {
       const quill = instances.get(node);
       if (quill && quill.emitter) {
+        // console.log(`kevTest: handleDOM for "${eventName}"`, args);
         quill.emitter.handleDOM(...args);
       }
     });

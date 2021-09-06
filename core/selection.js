@@ -13,6 +13,12 @@ class Range {
   }
 }
 
+/**
+ * FIXME:
+ * [ ] Can't type in Safari in ShadowDOM
+ * [ ] Selection change is not firing
+ */
+
 class Selection {
   constructor(scroll, emitter) {
     this.emitter = emitter;
@@ -25,16 +31,28 @@ class Selection {
     this.savedRange = new Range(0, 0);
     this.lastRange = this.savedRange;
     this.lastNative = null;
+    this.documentOrShadowRoot = this.getDocumentOrShadowRoot();
+    console.log(
+      'kevTest: this.documentOrShadowRoot =>',
+      this.documentOrShadowRoot,
+    );
     this.handleComposition();
     this.handleDragging();
     this.emitter.listenDOM('selectionchange', document, () => {
+      // eslint-disable-next-line no-console
+      console.log('kevTest: selectionchange');
       if (!this.mouseDown && !this.composing) {
+        console.log('kevTest: execute setTimeout');
         setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
       }
     });
     this.emitter.on(Emitter.events.SCROLL_BEFORE_UPDATE, () => {
+      // eslint-disable no-console
+      // console.log('kevTest: scroll before update event');
+      // console.log('kevTest: this.hasFocus =>', this.hasFocus());
       if (!this.hasFocus()) return;
       const native = this.getNativeRange();
+      // console.log('kevTest: native =>', native);
       if (native == null) return;
       if (native.start.node === this.cursor.textNode) return; // cursor.restore() will handle
       this.emitter.once(Emitter.events.SCROLL_UPDATE, () => {
@@ -176,9 +194,12 @@ class Selection {
   }
 
   getNativeRange() {
-    const selection = document.getSelection();
+    const selection = this.documentOrShadowRoot.getSelection();
+    console.log('kevTest: getNativeRange selection =>', selection);
     if (selection == null || selection.rangeCount <= 0) return null;
     const nativeRange = selection.getRangeAt(0);
+    // in safari nativeRange returns `null`
+    console.log('kevTest: getNativeRange nativeRange =>', nativeRange);
     if (nativeRange == null) return null;
     const range = this.normalizeNative(nativeRange);
     debug.info('getNativeRange', range);
@@ -187,6 +208,7 @@ class Selection {
 
   getRange() {
     const normalized = this.getNativeRange();
+    console.log('kevTest: normalized =>', normalized);
     if (normalized == null) return [null, null];
     const range = this.normalizedToRange(normalized);
     return [range, normalized];
@@ -194,8 +216,8 @@ class Selection {
 
   hasFocus() {
     return (
-      document.activeElement === this.root ||
-      contains(this.root, document.activeElement)
+      this.documentOrShadowRoot.activeElement === this.root ||
+      contains(this.root, this.documentOrShadowRoot.activeElement)
     );
   }
 
@@ -226,6 +248,7 @@ class Selection {
       !contains(this.root, nativeRange.startContainer) ||
       (!nativeRange.collapsed && !contains(this.root, nativeRange.endContainer))
     ) {
+      console.log('kevTest: normalizeNative first null');
       return null;
     }
     const range = {
@@ -317,7 +340,7 @@ class Selection {
     ) {
       return;
     }
-    const selection = document.getSelection();
+    const selection = this.documentOrShadowRoot.getSelection();
     if (selection == null) return;
     if (startNode != null) {
       if (!this.hasFocus()) this.root.focus();
@@ -370,14 +393,23 @@ class Selection {
   }
 
   update(source = Emitter.sources.USER) {
+    console.log('kevTest: update called!');
+    // store the previous range which will be used to check if the selection has changed
     const oldRange = this.lastRange;
+    // console.log('kevTest: oldRange =>', oldRange);
     const [lastRange, nativeRange] = this.getRange();
+    console.log('kevTest: [lastRange, nativeRange] =>', {
+      lastRange,
+      nativeRange,
+    });
     this.lastRange = lastRange;
     this.lastNative = nativeRange;
     if (this.lastRange != null) {
       this.savedRange = this.lastRange;
     }
+    // if a different selection has been made
     if (!isEqual(oldRange, this.lastRange)) {
+      console.log('kevTest: a different range detected');
       if (
         !this.composing &&
         nativeRange != null &&
@@ -385,6 +417,7 @@ class Selection {
         nativeRange.start.node !== this.cursor.textNode
       ) {
         const range = this.cursor.restore();
+        // console.log('kevTest: this.cursor.restore =>', range);
         if (range) {
           this.setNativeRange(
             range.startNode,
@@ -400,11 +433,46 @@ class Selection {
         cloneDeep(oldRange),
         source,
       ];
+      // eslint-disable-next-line no-console
+      console.log('kevTest: emitting =>', args);
       this.emitter.emit(Emitter.events.EDITOR_CHANGE, ...args);
+      // console.log('kevTest: emitted');
+
       if (source !== Emitter.sources.SILENT) {
         this.emitter.emit(...args);
       }
     }
+  }
+
+  // https://github.com/timblack-NukeDigital/quill/commit/ea8b366a7e1c0ecd9446de8d2d38c64e39057de3
+  // https://github.com/timblack-NukeDigital/quill/commit/2c58aba4856f654ce9498c91fab81d5883e6e35d
+  getDocumentOrShadowRoot() {
+    // return document;
+    let result = document;
+    // this.root => ".ql-editor"
+    if (typeof HTMLElement.prototype.attachShadow === 'function') {
+      let masterParentNode = this.root.parentNode;
+
+      while (
+        // if masterParentNode is not equal to the document
+        // or
+        // the masterParentNode is not an instance of ShadowRoot
+        !(
+          masterParentNode === document ||
+          masterParentNode instanceof ShadowRoot
+        )
+      ) {
+        masterParentNode = masterParentNode.parentNode;
+        // console.log('kevTest: masterParentNode =>', masterParentNode);
+      }
+
+      result =
+        masterParentNode instanceof ShadowRoot &&
+        typeof masterParentNode.getSelection === 'function'
+          ? masterParentNode
+          : document;
+    }
+    return result;
   }
 }
 

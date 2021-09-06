@@ -15,12 +15,17 @@ class BubbleTooltip extends BaseTooltip {
     this.quill.on(
       Emitter.events.EDITOR_CHANGE,
       (type, range, oldRange, source) => {
+        // eslint-disable-next-line no-console
+        console.log('kevTest: editor-change event type =>', type);
+        // an issue is that SELECTION_CHANGE is not being emitted by quill even though
+        // the DOM is emitting a selectionchange event 🤔
         if (type !== Emitter.events.SELECTION_CHANGE) return;
         if (
           range != null &&
           range.length > 0 &&
           source === Emitter.sources.USER
         ) {
+          console.log('kevTest: case A');
           this.show();
           // Lock our width so we will expand beyond our offsetParent boundaries
           this.root.style.left = '0px';
@@ -40,9 +45,11 @@ class BubbleTooltip extends BaseTooltip {
             this.position(indexBounds);
           }
         } else if (
-          document.activeElement !== this.textbox &&
+          document.querySelector('yld-web-sandbox').shadowRoot.activeElement !==
+            this.textbox &&
           this.quill.hasFocus()
         ) {
+          console.log('kevTest: case B');
           this.hide();
         }
       },
